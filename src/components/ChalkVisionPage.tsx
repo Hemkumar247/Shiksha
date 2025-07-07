@@ -15,28 +15,33 @@ import {
   Image as ImageIcon,
   FileText,
   Play,
-  Pause,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Target,
-  Lightbulb
+  Pause
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { geminiService, ChalkVisionAnalysis, VisualizationRecommendation } from '../services/geminiService';
+
+interface ExtractedContent {
+  text: string;
+  concepts: string[];
+  difficulty: string;
+  suggestions: string[];
+}
+
+interface VisualizedContent {
+  title: string;
+  description: string;
+  visualType: string;
+  content: string;
+}
 
 export const ChalkVisionPage: React.FC = () => {
   const { t } = useLanguage();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isGeneratingVisualization, setIsGeneratingVisualization] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<ChalkVisionAnalysis | null>(null);
-  const [visualizations, setVisualizations] = useState<VisualizationRecommendation[]>([]);
+  const [isVisualizing, setIsVisualizing] = useState(false);
+  const [extractedContent, setExtractedContent] = useState<ExtractedContent | null>(null);
+  const [visualizedContent, setVisualizedContent] = useState<VisualizedContent | null>(null);
   const [selectedGrade, setSelectedGrade] = useState('Grade 3');
   const [isRecording, setIsRecording] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [processingStage, setProcessingStage] = useState<string>('');
 
   const gradeOptions = [
     'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5',
@@ -46,27 +51,10 @@ export const ChalkVisionPage: React.FC = () => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File size must be less than 10MB');
-        return;
-      }
-
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError('Please select a valid image file');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        setSelectedImage(imageUrl);
-        setAnalysisResult(null);
-        setVisualizations([]);
-        setError(null);
-      };
-      reader.readAsDataURL(file);
+      const imageUrl = URL.createObjectURL(file);
+      setSelectedImage(imageUrl);
+      setExtractedContent(null);
+      setVisualizedContent(null);
     }
   };
 
@@ -74,92 +62,48 @@ export const ChalkVisionPage: React.FC = () => {
     if (!selectedImage) return;
     
     setIsAnalyzing(true);
-    setError(null);
-    setProcessingStage('Extracting content from image...');
     
-    try {
-      // Check rate limit
-      const rateLimitStatus = geminiService.getRateLimitStatus();
-      if (!rateLimitStatus.canMakeRequest) {
-        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds.`);
-      }
-
-      setProcessingStage('Analyzing educational content...');
-      const analysis = await geminiService.analyzeChalkVisionContent(selectedImage, selectedGrade);
-      
-      setProcessingStage('Generating teaching suggestions...');
-      setAnalysisResult(analysis);
-      
-      setProcessingStage('Complete!');
-    } catch (error: any) {
-      console.error('Error analyzing content:', error);
-      setError(error.message || 'Failed to analyze content. Please try again.');
-    } finally {
-      setIsAnalyzing(false);
-      setProcessingStage('');
-    }
+    // Simulate AI processing
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Simulate extracted content based on selected grade
+    const mockContent: ExtractedContent = {
+      text: `Mathematical equation: 2x + 5 = 15\nSolve for x\nStep 1: Subtract 5 from both sides\n2x = 10\nStep 2: Divide by 2\nx = 5`,
+      concepts: ['Linear Equations', 'Algebraic Manipulation', 'Variable Isolation'],
+      difficulty: selectedGrade,
+      suggestions: [
+        'Add a visual representation using balance scales',
+        'Provide more practice problems with similar structure',
+        'Create a quiz question to test understanding',
+        'Show real-world applications of linear equations'
+      ]
+    };
+    
+    setExtractedContent(mockContent);
+    setIsAnalyzing(false);
   };
 
-  const handleGenerateVisualization = async () => {
-    if (!analysisResult) return;
+  const handleVisualizeContent = async () => {
+    if (!extractedContent) return;
     
-    setIsGeneratingVisualization(true);
-    setError(null);
+    setIsVisualizing(true);
     
-    try {
-      // Check rate limit
-      const rateLimitStatus = geminiService.getRateLimitStatus();
-      if (!rateLimitStatus.canMakeRequest) {
-        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds.`);
-      }
-
-      const visualizationData = await geminiService.generateVisualization(
-        analysisResult.extractedText, 
-        selectedGrade
-      );
-      
-      setVisualizations(visualizationData);
-    } catch (error: any) {
-      console.error('Error generating visualization:', error);
-      setError(error.message || 'Failed to generate visualization. Please try again.');
-    } finally {
-      setIsGeneratingVisualization(false);
-    }
-  };
-
-  const handleRefreshAnalysis = async () => {
-    if (!selectedImage) return;
+    // Simulate visualization generation
+    await new Promise(resolve => setTimeout(resolve, 4000));
     
-    // Clear cache and re-analyze
-    geminiService.clearCache();
-    await handleAnalyzeContent();
+    const mockVisualization: VisualizedContent = {
+      title: 'Interactive Balance Scale Visualization',
+      description: 'Visual representation of solving linear equations using balance scales',
+      visualType: 'Interactive Animation',
+      content: 'A dynamic balance scale showing how operations on one side must be mirrored on the other side to maintain equality. Students can manipulate the scales to understand the concept of maintaining balance in equations.'
+    };
+    
+    setVisualizedContent(mockVisualization);
+    setIsVisualizing(false);
   };
 
   const toggleRecording = () => {
     setIsRecording(!isRecording);
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty?.toLowerCase()) {
-      case 'easy':
-      case 'beginner': return 'bg-green-100 text-green-800';
-      case 'medium':
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'hard':
-      case 'advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getSuggestionIcon = (type: string) => {
-    switch (type) {
-      case 'example': return <Lightbulb className="h-4 w-4" />;
-      case 'explanation': return <FileText className="h-4 w-4" />;
-      case 'activity': return <Users className="h-4 w-4" />;
-      case 'assessment': return <Target className="h-4 w-4" />;
-      case 'extension': return <Zap className="h-4 w-4" />;
-      default: return <BookOpen className="h-4 w-4" />;
-    }
   };
 
   return (
@@ -197,21 +141,6 @@ export const ChalkVisionPage: React.FC = () => {
           </motion.button>
         </div>
       </div>
-
-      {/* Error Display */}
-      {error && (
-        <motion.div
-          className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-          <div>
-            <p className="text-red-800 font-medium">Analysis Error</p>
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        </motion.div>
-      )}
 
       {/* Feature Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -312,64 +241,35 @@ export const ChalkVisionPage: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="flex space-x-2">
-                  <motion.button
-                    onClick={handleAnalyzeContent}
-                    disabled={isAnalyzing}
-                    className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 rounded-lg font-medium transition-all ${
-                      isAnalyzing
-                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                        : 'bg-primary text-white hover:bg-primary/90'
-                    }`}
-                    whileHover={!isAnalyzing ? { scale: 1.02 } : {}}
-                    whileTap={!isAnalyzing ? { scale: 0.98 } : {}}
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                        <span>{t('analyzing')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <ScanText className="h-4 w-4" />
-                        <span>{t('analyzeContent')}</span>
-                      </>
-                    )}
-                  </motion.button>
-
-                  {analysisResult && (
-                    <motion.button
-                      onClick={handleRefreshAnalysis}
-                      disabled={isAnalyzing}
-                      className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      title="Refresh Analysis"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </motion.button>
+                <motion.button
+                  onClick={handleAnalyzeContent}
+                  disabled={isAnalyzing}
+                  className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                    isAnalyzing
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-primary text-white hover:bg-primary/90'
+                  }`}
+                  whileHover={!isAnalyzing ? { scale: 1.02 } : {}}
+                  whileTap={!isAnalyzing ? { scale: 0.98 } : {}}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      <span>{t('analyzing')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ScanText className="h-4 w-4" />
+                      <span>{t('analyzeContent')}</span>
+                    </>
                   )}
-                </div>
-
-                {/* Processing Stage Indicator */}
-                {isAnalyzing && processingStage && (
-                  <motion.div
-                    className="bg-blue-50 border border-blue-200 rounded-lg p-3"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4 text-blue-600" />
-                      <span className="text-blue-800 text-sm">{processingStage}</span>
-                    </div>
-                  </motion.div>
-                )}
+                </motion.button>
               </motion.div>
             )}
           </div>
         </motion.div>
 
-        {/* Analysis Results Section */}
+        {/* Extracted Content Section */}
         <motion.div
           className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
           initial={{ opacity: 0, x: 20 }}
@@ -380,49 +280,28 @@ export const ChalkVisionPage: React.FC = () => {
             {t('extractedContent')}
           </h3>
 
-          {!analysisResult && !isAnalyzing && (
+          {!extractedContent && !isAnalyzing && (
             <div className="text-center py-12">
               <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">{t('uploadImageToAnalyze')}</p>
             </div>
           )}
 
-          {analysisResult && (
+          {extractedContent && (
             <motion.div
-              className="space-y-6"
+              className="space-y-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              {/* Extracted Text */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                  <FileText className="h-4 w-4 mr-2" />
-                  {t('extractedText')}
-                </h4>
-                <p className="text-sm text-gray-700 whitespace-pre-line">
-                  {analysisResult.extractedText}
-                </p>
+                <h4 className="font-medium text-gray-900 mb-2">{t('extractedText')}</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{extractedContent.text}</p>
               </div>
 
-              {/* Subject and Grade Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <h5 className="font-medium text-blue-900 text-sm">Subject Area</h5>
-                  <p className="text-blue-800">{analysisResult.subjectArea}</p>
-                </div>
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <h5 className="font-medium text-green-900 text-sm">Difficulty</h5>
-                  <span className={`px-2 py-1 rounded text-xs ${getDifficultyColor(analysisResult.difficultyLevel)}`}>
-                    {analysisResult.difficultyLevel}
-                  </span>
-                </div>
-              </div>
-
-              {/* Identified Concepts */}
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h4 className="font-medium text-blue-900 mb-2">{t('identifiedConcepts')}</h4>
                 <div className="flex flex-wrap gap-2">
-                  {analysisResult.identifiedConcepts.map((concept, index) => (
+                  {extractedContent.concepts.map((concept, index) => (
                     <span
                       key={index}
                       className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
@@ -433,57 +312,30 @@ export const ChalkVisionPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* AI Suggestions */}
               <div className="bg-green-50 p-4 rounded-lg">
-                <h4 className="font-medium text-green-900 mb-3">{t('suggestions')}</h4>
-                <div className="space-y-3">
-                  {analysisResult.suggestions.map((suggestion, index) => (
-                    <div key={index} className="bg-white p-3 rounded border border-green-200">
-                      <div className="flex items-center space-x-2 mb-2">
-                        {getSuggestionIcon(suggestion.type)}
-                        <h5 className="font-medium text-gray-900">{suggestion.title}</h5>
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                          {suggestion.type}
-                        </span>
-                      </div>
-                      <p className="text-gray-700 text-sm mb-2">{suggestion.description}</p>
-                      <div className="text-xs text-gray-600">
-                        <Clock className="h-3 w-3 inline mr-1" />
-                        {suggestion.timeRequired}
-                      </div>
-                    </div>
+                <h4 className="font-medium text-green-900 mb-2">{t('suggestions')}</h4>
+                <ul className="space-y-1">
+                  {extractedContent.suggestions.map((suggestion, index) => (
+                    <li key={index} className="text-sm text-green-800 flex items-start">
+                      <span className="text-green-600 mr-2">•</span>
+                      {suggestion}
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
 
-              {/* Next Steps */}
-              {analysisResult.nextSteps && analysisResult.nextSteps.length > 0 && (
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-purple-900 mb-2">Recommended Next Steps</h4>
-                  <ul className="space-y-1">
-                    {analysisResult.nextSteps.map((step, index) => (
-                      <li key={index} className="text-purple-800 text-sm flex items-start">
-                        <CheckCircle className="h-4 w-4 text-purple-600 mr-2 mt-0.5 flex-shrink-0" />
-                        {step}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Generate Visualization Button */}
               <motion.button
-                onClick={handleGenerateVisualization}
-                disabled={isGeneratingVisualization}
+                onClick={handleVisualizeContent}
+                disabled={isVisualizing}
                 className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg font-medium transition-all ${
-                  isGeneratingVisualization
+                  isVisualizing
                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                     : 'bg-secondary text-white hover:bg-secondary/90'
                 }`}
-                whileHover={!isGeneratingVisualization ? { scale: 1.02 } : {}}
-                whileTap={!isGeneratingVisualization ? { scale: 0.98 } : {}}
+                whileHover={!isVisualizing ? { scale: 1.02 } : {}}
+                whileTap={!isVisualizing ? { scale: 0.98 } : {}}
               >
-                {isGeneratingVisualization ? (
+                {isVisualizing ? (
                   <>
                     <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                     <span>{t('generating')}</span>
@@ -500,85 +352,52 @@ export const ChalkVisionPage: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* Visualization Recommendations */}
-      {visualizations.length > 0 && (
+      {/* Visualized Content Section */}
+      {visualizedContent && (
         <motion.div
           className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <Sparkles className="h-5 w-5 mr-2 text-yellow-500" />
             {t('visualizedContent')}
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {visualizations.map((viz, index) => (
-              <motion.div
-                key={index}
-                className="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-lg border border-yellow-200"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-bold text-gray-900">{viz.title}</h4>
-                  <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
-                    {viz.type}
-                  </span>
-                </div>
-                
-                <p className="text-gray-700 mb-4">{viz.description}</p>
-                
-                {/* Materials */}
-                <div className="mb-4">
-                  <h5 className="font-medium text-gray-900 mb-2">Required Materials:</h5>
-                  <div className="flex flex-wrap gap-2">
-                    {viz.materials.map((material, matIndex) => (
-                      <span key={matIndex} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                        {material}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Steps */}
-                <div className="mb-4">
-                  <h5 className="font-medium text-gray-900 mb-2">Implementation Steps:</h5>
-                  <ol className="list-decimal list-inside space-y-1">
-                    {viz.steps.map((step, stepIndex) => (
-                      <li key={stepIndex} className="text-gray-700 text-sm">{step}</li>
-                    ))}
-                  </ol>
-                </div>
-
-                {/* Learning Outcome */}
-                <div className="bg-white p-3 rounded border border-yellow-200">
-                  <h5 className="font-medium text-gray-900 mb-1">Expected Outcome:</h5>
-                  <p className="text-gray-700 text-sm">{viz.learningOutcome}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          
-          <div className="flex items-center justify-center space-x-4 mt-6">
-            <motion.button
-              className="flex items-center space-x-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Download className="h-4 w-4" />
-              <span>{t('downloadVisualization')}</span>
-            </motion.button>
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-lg border border-yellow-200">
+            <h4 className="text-xl font-bold text-gray-900 mb-2">{visualizedContent.title}</h4>
+            <div className="flex items-center space-x-2 mb-4">
+              <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+                {visualizedContent.visualType}
+              </span>
+              <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                {selectedGrade}
+              </span>
+            </div>
+            <p className="text-gray-700 mb-4">{visualizedContent.description}</p>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <p className="text-gray-800">{visualizedContent.content}</p>
+            </div>
             
-            <motion.button
-              className="flex items-center space-x-2 px-6 py-3 bg-secondary text-white rounded-lg hover:bg-secondary/90"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Archive className="h-4 w-4" />
-              <span>{t('saveToArchive')}</span>
-            </motion.button>
+            <div className="flex items-center space-x-4 mt-4">
+              <motion.button
+                className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Download className="h-4 w-4" />
+                <span>{t('downloadVisualization')}</span>
+              </motion.button>
+              
+              <motion.button
+                className="flex items-center space-x-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Archive className="h-4 w-4" />
+                <span>{t('saveToArchive')}</span>
+              </motion.button>
+            </div>
           </div>
         </motion.div>
       )}
@@ -628,14 +447,6 @@ export const ChalkVisionPage: React.FC = () => {
           </motion.button>
         </div>
       </motion.div>
-
-      {/* Cache Status (for development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-gray-100 p-4 rounded-lg text-sm text-gray-600">
-          <p>Cache Size: {geminiService.getCacheSize()} items</p>
-          <p>Rate Limit Status: {geminiService.getRateLimitStatus().canMakeRequest ? 'Available' : 'Limited'}</p>
-        </div>
-      )}
     </div>
   );
 };

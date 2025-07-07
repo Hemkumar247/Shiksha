@@ -11,18 +11,32 @@ import {
   Star,
   Volume2,
   Download,
-  GraduationCap,
-  RefreshCw,
-  AlertCircle,
-  Layers,
-  Award,
-  Eye,
-  FileText
+  GraduationCap
 } from 'lucide-react';
 import { VoiceInput } from './VoiceInput';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { useLanguage } from '../contexts/LanguageContext';
-import { geminiService, LessonPlan } from '../services/geminiService';
+
+interface Activity {
+  id: string;
+  name: string;
+  duration: number;
+  description: string;
+  type: 'discussion' | 'hands-on' | 'presentation' | 'assessment';
+}
+
+interface LessonPlan {
+  title: string;
+  subject: string;
+  grade: string;
+  duration: number;
+  objectives: string[];
+  activities: Activity[];
+  materials: string[];
+  assessment: string;
+  culturalContext?: string;
+  festivals?: string[];
+}
 
 export const LessonPlanner: React.FC = () => {
   const { t, language } = useLanguage();
@@ -33,10 +47,6 @@ export const LessonPlanner: React.FC = () => {
   const [selectedGrade, setSelectedGrade] = useState('Grade 3');
   const [selectedSubject, setSelectedSubject] = useState('Tamil');
   const [selectedDuration, setSelectedDuration] = useState(45);
-  const [selectedTeachingStyle, setSelectedTeachingStyle] = useState('Interactive');
-  const [learningObjectives, setLearningObjectives] = useState<string[]>(['']);
-  const [error, setError] = useState<string | null>(null);
-  const [processingStage, setProcessingStage] = useState<string>('');
   const { speak, isSpeaking } = useSpeechSynthesis();
 
   const gradeOptions = [
@@ -56,28 +66,23 @@ export const LessonPlanner: React.FC = () => {
     { value: 90, label: '1.5 hours' }
   ];
 
-  const teachingStyleOptions = [
-    'Interactive', 'Lecture-based', 'Hands-on', 'Discussion-based', 
-    'Project-based', 'Inquiry-based', 'Collaborative', 'Visual'
-  ];
-
   const steps = [
     {
       id: 'input',
-      title: t('describeLessonTitle') || 'Describe Your Lesson',
-      description: t('describeLessonSubtitle') || 'Use voice or typing to provide lesson details',
-      prompt: t('lessonPrompt') || 'Tell me what subject, which grade, and how long the lesson should be...'
+      title: t('describeLessonTitle'),
+      description: t('describeLessonSubtitle'),
+      prompt: t('lessonPrompt')
     },
     {
       id: 'generate',
-      title: t('generatingLesson') || 'Generating Your Lesson...',
-      description: t('generatingSubtext') || 'Creating your customized lesson plan',
+      title: t('generatingLesson'),
+      description: t('generatingSubtext'),
       prompt: ''
     },
     {
       id: 'review',
-      title: t('reviewLesson') || 'Your Lesson is Ready!',
-      description: t('reviewSubtext') || 'Your lesson plan is ready',
+      title: t('reviewLesson'),
+      description: t('reviewSubtext'),
       prompt: ''
     }
   ];
@@ -86,110 +91,83 @@ export const LessonPlanner: React.FC = () => {
     setVoiceInput(transcript);
   };
 
-  const handleObjectiveChange = (index: number, value: string) => {
-    const newObjectives = [...learningObjectives];
-    newObjectives[index] = value;
-    setLearningObjectives(newObjectives);
-  };
-
-  const addObjective = () => {
-    if (learningObjectives.length < 5) {
-      setLearningObjectives([...learningObjectives, '']);
-    }
-  };
-
-  const removeObjective = (index: number) => {
-    if (learningObjectives.length > 1) {
-      const newObjectives = learningObjectives.filter((_, i) => i !== index);
-      setLearningObjectives(newObjectives);
-    }
+  const generateSamplePlan = (): LessonPlan => {
+    // Generate content based on selected parameters
+    const gradeNumber = selectedGrade.split(' ')[1];
+    
+    return {
+      title: `${selectedSubject} - ${voiceInput || t('sampleLessonTitle')}`,
+      subject: selectedSubject,
+      grade: selectedGrade,
+      duration: selectedDuration,
+      objectives: [
+        `${selectedGrade} students should understand the basic concepts`,
+        `Students should be able to apply knowledge practically`,
+        `Students should demonstrate understanding through activities`,
+        `Students should connect learning to real-life situations`
+      ],
+      activities: [
+        {
+          id: '1',
+          name: t('sampleActivity1'),
+          duration: Math.floor(selectedDuration * 0.2),
+          description: `Introduction and explanation suitable for ${selectedGrade}`,
+          type: 'presentation'
+        },
+        {
+          id: '2',
+          name: t('sampleActivity2'),
+          duration: Math.floor(selectedDuration * 0.4),
+          description: `Hands-on activity designed for ${selectedGrade} level`,
+          type: 'hands-on'
+        },
+        {
+          id: '3',
+          name: t('sampleActivity3'),
+          duration: Math.floor(selectedDuration * 0.3),
+          description: `Group discussion appropriate for ${selectedGrade}`,
+          type: 'discussion'
+        },
+        {
+          id: '4',
+          name: t('sampleActivity4'),
+          duration: Math.floor(selectedDuration * 0.1),
+          description: `Assessment suitable for ${selectedGrade} students`,
+          type: 'assessment'
+        }
+      ],
+      materials: [
+        `${selectedSubject} textbook for ${selectedGrade}`,
+        'Blackboard and chalk',
+        'Visual aids and charts',
+        'Activity worksheets'
+      ],
+      assessment: `Students should demonstrate understanding appropriate for ${selectedGrade} level`,
+      culturalContext: t('sampleCulturalContext'),
+      festivals: [t('tamilNewYear'), 'Tamil Language Day']
+    };
   };
 
   const handleGenerate = async () => {
-    console.log('Generate button clicked');
-    
     if (!voiceInput.trim()) {
-      speak(t('provideDetails') || 'Please provide lesson details first', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
-      setError('Please provide lesson details first');
-      return;
-    }
-
-    const validObjectives = learningObjectives.filter(obj => obj.trim());
-    if (validObjectives.length === 0) {
-      setError('Please provide at least one learning objective');
+      speak(t('provideDetails'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
       return;
     }
 
     setIsGenerating(true);
     setCurrentStep(1);
-    setError(null);
     
-    console.log('Starting lesson generation...');
-    speak(`${t('processingRequest') || 'Processing your request'} for ${selectedGrade} ${selectedSubject}`, { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
+    speak(`${t('processingRequest')} for ${selectedGrade} ${selectedSubject}`, { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
     
-    try {
-      // Check rate limit
-      const rateLimitStatus = geminiService.getRateLimitStatus();
-      if (!rateLimitStatus.canMakeRequest) {
-        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds.`);
-      }
-
-      setProcessingStage('Analyzing lesson requirements...');
-      
-      const lessonParams = {
-        subject: selectedSubject,
-        grade: selectedGrade,
-        duration: selectedDuration,
-        objectives: validObjectives,
-        teachingStyle: selectedTeachingStyle,
-        topic: voiceInput
-      };
-
-      console.log('Lesson parameters:', lessonParams);
-
-      setProcessingStage('Generating comprehensive lesson plan...');
-      const plan = await geminiService.generateLessonPlan(lessonParams);
-      
-      console.log('Lesson plan generated:', plan);
-      
-      setProcessingStage('Adding cultural context and assessments...');
-      setGeneratedPlan(plan);
-      setCurrentStep(2);
-      
-      speak(t('lessonReady') || 'Lesson is ready! Let\'s take a look', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
-    } catch (error: any) {
-      console.error('Error generating lesson plan:', error);
-      setError(error.message || 'Failed to generate lesson plan. Please try again.');
-      setCurrentStep(0);
-      speak('Sorry, there was an error generating the lesson. Please try again.', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
-    } finally {
-      setIsGenerating(false);
-      setProcessingStage('');
-    }
-  };
-
-  const handleRefreshLesson = async () => {
-    if (!generatedPlan) return;
+    // Simulate AI processing
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
-    const lessonParams = {
-      subject: selectedSubject,
-      grade: selectedGrade,
-      duration: selectedDuration,
-      objectives: learningObjectives.filter(obj => obj.trim()),
-      teachingStyle: selectedTeachingStyle,
-      topic: voiceInput
-    };
-
-    try {
-      setIsGenerating(true);
-      const refreshedPlan = await geminiService.refreshLessonPlan(lessonParams);
-      setGeneratedPlan(refreshedPlan);
-      speak('Lesson plan refreshed with new content', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
-    } catch (error: any) {
-      setError(error.message || 'Failed to refresh lesson plan');
-    } finally {
-      setIsGenerating(false);
-    }
+    const plan = generateSamplePlan();
+    setGeneratedPlan(plan);
+    setCurrentStep(2);
+    setIsGenerating(false);
+    
+    speak(t('lessonReady'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
   };
 
   const handleSpeak = (text: string) => {
@@ -211,29 +189,13 @@ export const LessonPlanner: React.FC = () => {
         return <Users className="h-4 w-4" />;
       case 'assessment':
         return <CheckCircle className="h-4 w-4" />;
-      case 'interactive':
-        return <Layers className="h-4 w-4" />;
-      case 'collaborative':
-        return <Users className="h-4 w-4" />;
       default:
         return <BookOpen className="h-4 w-4" />;
     }
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty?.toLowerCase()) {
-      case 'easy':
-      case 'beginner': return 'bg-green-100 text-green-800';
-      case 'medium':
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'hard':
-      case 'advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Progress Steps */}
       <div className="flex items-center justify-between mb-8">
         {steps.map((step, index) => (
@@ -259,21 +221,6 @@ export const LessonPlanner: React.FC = () => {
         ))}
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <motion.div
-          className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-          <div>
-            <p className="text-red-800 font-medium">Generation Error</p>
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        </motion.div>
-      )}
-
       <AnimatePresence mode="wait">
         {currentStep === 0 && (
           <motion.div
@@ -285,21 +232,21 @@ export const LessonPlanner: React.FC = () => {
           >
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {t('describeLessonTitle') || 'Describe Your Lesson Using Voice'}
+                {t('describeLessonTitle')}
               </h2>
               <p className="text-gray-600">
-                {t('describeLessonSubtitle') || 'Use voice or typing to provide lesson details'}
+                {t('describeLessonSubtitle')}
               </p>
             </div>
 
-            {/* Lesson Parameters */}
+            {/* Grade and Subject Selection */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <GraduationCap className="h-5 w-5 mr-2 text-primary" />
                 Lesson Parameters
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {/* Grade Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -353,61 +300,6 @@ export const LessonPlanner: React.FC = () => {
                     ))}
                   </select>
                 </div>
-
-                {/* Teaching Style */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Teaching Style
-                  </label>
-                  <select
-                    value={selectedTeachingStyle}
-                    onChange={(e) => setSelectedTeachingStyle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    {teachingStyleOptions.map((style) => (
-                      <option key={style} value={style}>
-                        {style}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Learning Objectives */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Learning Objectives
-                  </label>
-                  <button
-                    onClick={addObjective}
-                    disabled={learningObjectives.length >= 5}
-                    className="text-sm text-primary hover:text-primary/80 disabled:text-gray-400"
-                  >
-                    + Add Objective
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {learningObjectives.map((objective, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={objective}
-                        onChange={(e) => handleObjectiveChange(index, e.target.value)}
-                        placeholder={`Learning objective ${index + 1}...`}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                      />
-                      {learningObjectives.length > 1 && (
-                        <button
-                          onClick={() => removeObjective(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* Selected Parameters Display */}
@@ -422,9 +314,6 @@ export const LessonPlanner: React.FC = () => {
                   </span>
                   <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
                     {selectedDuration} minutes
-                  </span>
-                  <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-                    {selectedTeachingStyle}
                   </span>
                 </div>
               </div>
@@ -443,7 +332,7 @@ export const LessonPlanner: React.FC = () => {
               
               {voiceInput && (
                 <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                  <h4 className="font-medium text-green-900 mb-2">{t('yourRequest') || 'Your Request:'}</h4>
+                  <h4 className="font-medium text-green-900 mb-2">{t('yourRequest')}</h4>
                   <p className="text-green-800">{voiceInput}</p>
                 </div>
               )}
@@ -452,16 +341,16 @@ export const LessonPlanner: React.FC = () => {
             <div className="flex justify-center">
               <motion.button
                 onClick={handleGenerate}
-                disabled={!voiceInput.trim() || learningObjectives.filter(obj => obj.trim()).length === 0 || isGenerating}
+                disabled={!voiceInput.trim()}
                 className={`px-8 py-3 rounded-lg font-medium transition-all ${
-                  voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0 && !isGenerating
+                  voiceInput.trim()
                     ? 'bg-primary text-white hover:bg-primary/90 shadow-lg'
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 }`}
-                whileHover={voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0 && !isGenerating ? { scale: 1.05 } : {}}
-                whileTap={voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0 && !isGenerating ? { scale: 0.95 } : {}}
+                whileHover={voiceInput.trim() ? { scale: 1.05 } : {}}
+                whileTap={voiceInput.trim() ? { scale: 0.95 } : {}}
               >
-                {isGenerating ? 'Generating...' : (t('generateLesson') || 'Generate Lesson')}
+                {t('generateLesson')}
               </motion.button>
             </div>
           </motion.div>
@@ -481,14 +370,14 @@ export const LessonPlanner: React.FC = () => {
                   <BookOpen className="h-8 w-8 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  {t('generatingLesson') || 'Generating Your Lesson...'}
+                  {t('generatingLesson')}
                 </h2>
                 <p className="text-gray-600">
-                  Creating comprehensive lesson plan for {selectedGrade} {selectedSubject} ({selectedDuration} minutes)
+                  Creating lesson plan for {selectedGrade} {selectedSubject} ({selectedDuration} minutes)
                 </p>
               </div>
 
-              <div className="flex justify-center space-x-2 mb-6">
+              <div className="flex justify-center space-x-2">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <motion.div
                     key={i}
@@ -506,27 +395,11 @@ export const LessonPlanner: React.FC = () => {
                 ))}
               </div>
 
-              {/* Processing Stage Indicator */}
-              {processingStage && (
-                <motion.div
-                  className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    <Clock className="h-4 w-4 text-blue-600" />
-                    <span className="text-blue-800 text-sm">{processingStage}</span>
-                  </div>
-                </motion.div>
-              )}
-
-              <div className="text-sm text-gray-500 space-y-1">
-                <p>{t('generatingStructure') || '• Creating lesson structure'}</p>
-                <p>{t('planningActivities') || '• Planning activities'}</p>
-                <p>{t('addingFestivalContext') || '• Adding festival context'}</p>
-                <p>{t('addingCulturalContext') || '• Adding Tamil culture'}</p>
-                <p>• Creating assessment strategies</p>
-                <p>• Adding differentiation options</p>
+              <div className="mt-6 text-sm text-gray-500">
+                <p>{t('generatingStructure')}</p>
+                <p>{t('planningActivities')}</p>
+                <p>{t('addingFestivalContext')}</p>
+                <p>{t('addingCulturalContext')}</p>
               </div>
             </div>
           </motion.div>
@@ -543,9 +416,9 @@ export const LessonPlanner: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                  {t('reviewLesson') || 'Your Lesson is Ready!'}
+                  {t('reviewLesson')}
                 </h2>
-                <p className="text-gray-600">{t('reviewSubtext') || 'Your lesson plan is ready'}</p>
+                <p className="text-gray-600">{t('reviewSubtext')}</p>
               </div>
               <div className="flex space-x-2">
                 <motion.button
@@ -555,18 +428,7 @@ export const LessonPlanner: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Volume2 className="h-4 w-4" />
-                  <span>{t('listen') || 'Listen'}</span>
-                </motion.button>
-                <motion.button
-                  onClick={handleRefreshLesson}
-                  disabled={isGenerating}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Refresh Lesson Plan"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span>Refresh</span>
+                  <span>{t('listen')}</span>
                 </motion.button>
                 <motion.button
                   onClick={handleDownload}
@@ -575,7 +437,7 @@ export const LessonPlanner: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Download className="h-4 w-4" />
-                  <span>{t('download') || 'Download'}</span>
+                  <span>{t('download')}</span>
                 </motion.button>
               </div>
             </div>
@@ -597,22 +459,18 @@ export const LessonPlanner: React.FC = () => {
                     <Clock className="h-4 w-4 mr-1" />
                     {generatedPlan.duration} {language === 'ta' ? 'நிமிடங்கள்' : 'minutes'}
                   </span>
-                  <span className="flex items-center">
-                    <Layers className="h-4 w-4 mr-1" />
-                    {selectedTeachingStyle}
-                  </span>
                 </div>
               </div>
 
-              <div className="p-6 space-y-8">
+              <div className="p-6 space-y-6">
                 {/* Objectives */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
                     <Target className="h-5 w-5 mr-2 text-primary" />
-                    {t('learningObjectives') || 'Learning Objectives'}
+                    {t('learningObjectives')}
                   </h4>
                   <ul className="space-y-2">
-                    {generatedPlan.objectives && generatedPlan.objectives.map((objective, index) => (
+                    {generatedPlan.objectives.map((objective, index) => (
                       <li key={index} className="flex items-start">
                         <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
                         <span className="text-gray-700">{objective}</span>
@@ -623,135 +481,35 @@ export const LessonPlanner: React.FC = () => {
 
                 {/* Activities */}
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
                     <Lightbulb className="h-5 w-5 mr-2 text-secondary" />
-                    {t('activities') || 'Activities'}
+                    {t('activities')}
                   </h4>
-                  <div className="space-y-4">
-                    {generatedPlan.activities && generatedPlan.activities.map((activity) => (
+                  <div className="space-y-3">
+                    {generatedPlan.activities.map((activity) => (
                       <div key={activity.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-2">
                             <ActivityTypeIcon type={activity.type} />
                             <span className="font-medium text-gray-900">{activity.name}</span>
-                            <span className={`px-2 py-1 rounded text-xs ${getDifficultyColor(activity.type)}`}>
-                              {activity.type}
-                            </span>
                           </div>
                           <span className="text-sm text-gray-500">
                             {activity.duration} {language === 'ta' ? 'நிமிடங்கள்' : 'minutes'}
                           </span>
                         </div>
-                        <p className="text-gray-700 text-sm mb-3">{activity.description}</p>
-                        
-                        {/* Learning Objectives for Activity */}
-                        {activity.learningObjectives && activity.learningObjectives.length > 0 && (
-                          <div className="mb-3">
-                            <h6 className="text-xs font-medium text-gray-600 mb-1">Learning Objectives:</h6>
-                            <div className="flex flex-wrap gap-1">
-                              {activity.learningObjectives.map((obj, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                                  {obj}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Materials */}
-                        {activity.materials && activity.materials.length > 0 && (
-                          <div className="mb-3">
-                            <h6 className="text-xs font-medium text-gray-600 mb-1">Materials:</h6>
-                            <div className="flex flex-wrap gap-1">
-                              {activity.materials.map((material, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                  {material}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Instructions */}
-                        {activity.instructions && activity.instructions.length > 0 && (
-                          <div>
-                            <h6 className="text-xs font-medium text-gray-600 mb-1">Instructions:</h6>
-                            <ol className="list-decimal list-inside text-xs text-gray-600 space-y-1">
-                              {activity.instructions.map((instruction, idx) => (
-                                <li key={idx}>{instruction}</li>
-                              ))}
-                            </ol>
-                          </div>
-                        )}
+                        <p className="text-gray-700 text-sm">{activity.description}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Teaching Strategies */}
-                {generatedPlan.teachingStrategies && generatedPlan.teachingStrategies.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                      <Award className="h-5 w-5 mr-2 text-purple-500" />
-                      Teaching Strategies
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {generatedPlan.teachingStrategies.map((strategy, index) => (
-                        <div key={index} className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                          <h5 className="font-medium text-purple-900 mb-2">{strategy.name}</h5>
-                          <p className="text-purple-800 text-sm mb-2">{strategy.description}</p>
-                          <div className="text-xs text-purple-700">
-                            <strong>Implementation:</strong>
-                            <ul className="list-disc list-inside mt-1">
-                              {strategy.implementation && strategy.implementation.map((impl, idx) => (
-                                <li key={idx}>{impl}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Visual Aids */}
-                {generatedPlan.visualAids && generatedPlan.visualAids.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                      <Eye className="h-5 w-5 mr-2 text-green-500" />
-                      Visual Aids & Resources
-                    </h4>
-                    <div className="space-y-3">
-                      {generatedPlan.visualAids.map((aid, index) => (
-                        <div key={index} className="bg-green-50 p-4 rounded-lg border border-green-200">
-                          <div className="flex items-center justify-between mb-2">
-                            <h5 className="font-medium text-green-900">{aid.type}</h5>
-                            <span className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
-                              {aid.purpose}
-                            </span>
-                          </div>
-                          <p className="text-green-800 text-sm mb-2">{aid.description}</p>
-                          <div className="text-xs text-green-700">
-                            <strong>Creation Steps:</strong>
-                            <ol className="list-decimal list-inside mt-1">
-                              {aid.creationInstructions && aid.creationInstructions.map((instruction, idx) => (
-                                <li key={idx}>{instruction}</li>
-                              ))}
-                            </ol>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Materials */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">
-                    {t('requiredMaterials') || 'Required Materials'}
+                    {t('requiredMaterials')}
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {generatedPlan.materials && generatedPlan.materials.map((material, index) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {generatedPlan.materials.map((material, index) => (
                       <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
                         <CheckCircle className="h-4 w-4 text-green-500" />
                         <span className="text-sm text-gray-700">{material}</span>
@@ -760,75 +518,12 @@ export const LessonPlanner: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Assessment Methods */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-4">
-                    Assessment Methods
-                  </h4>
-                  <div className="space-y-3">
-                    {generatedPlan.assessment && generatedPlan.assessment.map((method, index) => (
-                      <div key={index} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <h5 className="font-medium text-blue-900">{method.type}</h5>
-                          <span className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded">
-                            {method.timeRequired}
-                          </span>
-                        </div>
-                        <p className="text-blue-800 text-sm mb-2">{method.description}</p>
-                        <div className="text-xs text-blue-700">
-                          <strong>Rubric:</strong>
-                          <ul className="list-disc list-inside mt-1">
-                            {method.rubric && method.rubric.map((criterion, idx) => (
-                              <li key={idx}>{criterion}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Differentiation Strategies */}
-                {generatedPlan.differentiation && generatedPlan.differentiation.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                      <Users className="h-5 w-5 mr-2 text-orange-500" />
-                      Differentiation Strategies
-                    </h4>
-                    <div className="space-y-3">
-                      {generatedPlan.differentiation.map((diff, index) => (
-                        <div key={index} className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                          <h5 className="font-medium text-orange-900 mb-2">{diff.learnerType}</h5>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <h6 className="text-xs font-medium text-orange-800 mb-1">Adaptations:</h6>
-                              <ul className="list-disc list-inside text-xs text-orange-700">
-                                {diff.adaptations && diff.adaptations.map((adaptation, idx) => (
-                                  <li key={idx}>{adaptation}</li>
-                                ))}
-                              </ul>
-                            </div>
-                            <div>
-                              <h6 className="text-xs font-medium text-orange-800 mb-1">Support Materials:</h6>
-                              <ul className="list-disc list-inside text-xs text-orange-700">
-                                {diff.supportMaterials && diff.supportMaterials.map((material, idx) => (
-                                  <li key={idx}>{material}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Cultural Context */}
                 {generatedPlan.culturalContext && (
                   <div className="bg-orange-50 p-4 rounded-lg">
                     <h4 className="font-semibold text-orange-900 mb-2 flex items-center">
                       <Star className="h-5 w-5 mr-2" />
-                      {t('culturalContext') || 'Cultural Context'}
+                      {t('culturalContext')}
                     </h4>
                     <p className="text-orange-800 text-sm">{generatedPlan.culturalContext}</p>
                     {generatedPlan.festivals && (
@@ -842,34 +537,36 @@ export const LessonPlanner: React.FC = () => {
                     )}
                   </div>
                 )}
+
+                {/* Assessment */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    {t('evaluation')}
+                  </h4>
+                  <p className="text-gray-700 bg-blue-50 p-4 rounded-lg">
+                    {generatedPlan.assessment}
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Follow-up Voice Input */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <h4 className="font-semibold text-gray-900 mb-4">
-                {t('needModifications') || 'Need any modifications?'}
+                {t('needModifications')}
               </h4>
               <VoiceInput
                 onTranscript={(text) => {
                   // Handle refinement requests
-                  speak(t('makingChanges') || 'Making those changes for you', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
+                  speak(t('makingChanges'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
                 }}
-                placeholder={t('modificationPrompt') || 'Tell me what changes you need...'}
+                placeholder={t('modificationPrompt')}
                 autoSpeak={true}
               />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Cache Status (for development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-gray-100 p-4 rounded-lg text-sm text-gray-600">
-          <p>Cache Size: {geminiService.getCacheSize()} items</p>
-          <p>Rate Limit Status: {geminiService.getRateLimitStatus().canMakeRequest ? 'Available' : 'Limited'}</p>
-        </div>
-      )}
     </div>
   );
 };
