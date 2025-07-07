@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, AlertCircle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
@@ -33,6 +33,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   const { speak, isSpeaking, cancel } = useSpeechSynthesis();
   const [showTranscript, setShowTranscript] = useState(false);
   const [lastTranscript, setLastTranscript] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
 
   const defaultPlaceholder = placeholder || t('clickMicToSpeak');
 
@@ -52,15 +53,28 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
     }
   }, [isListening, transcript, autoSpeak, lastTranscript, speak, t, language]);
 
-  const handleMicClick = () => {
+  const handleMicClick = async () => {
     if (isListening) {
       stopListening();
     } else {
       resetTranscript();
       setShowTranscript(false);
-      setLastTranscript(''); // Reset last transcript for new recording
-      startListening();
+      setLastTranscript('');
+      setRetryCount(0);
+      await startListening();
     }
+  };
+
+  const handleRetry = async () => {
+    setRetryCount(prev => prev + 1);
+    resetTranscript();
+    setShowTranscript(false);
+    setLastTranscript('');
+    
+    // Add a longer delay for retries
+    setTimeout(async () => {
+      await startListening();
+    }, 500);
   };
 
   const handleSpeakClick = () => {
@@ -71,12 +85,37 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
     }
   };
 
+  const getErrorMessage = (errorType: string) => {
+    switch (errorType) {
+      case 'network':
+        return 'Network connection issue. Please check your internet connection.';
+      case 'not-allowed':
+        return 'Microphone access denied. Please allow microphone permissions.';
+      case 'no-speech':
+        return 'No speech detected. Please try speaking again.';
+      case 'audio-capture':
+        return 'Microphone not available. Please check your microphone.';
+      case 'service-not-allowed':
+        return 'Speech recognition service not available.';
+      default:
+        return errorType;
+    }
+  };
+
   if (!isSupported) {
     return (
       <div className={`p-4 bg-red-50 border border-red-200 rounded-lg ${className}`}>
-        <p className="text-red-700 text-sm">
-          Voice recognition is not supported in this browser. Please use Chrome or Safari.
-        </p>
+        <div className="flex items-center space-x-2">
+          <AlertCircle className="h-5 w-5 text-red-500" />
+          <div>
+            <p className="text-red-700 text-sm font-medium">
+              Voice recognition not supported
+            </p>
+            <p className="text-red-600 text-xs mt-1">
+              Please use Chrome, Safari, or Edge browser for voice input functionality.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -86,13 +125,16 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
       <div className="flex items-center gap-3 justify-center sm:justify-start">
         <motion.button
           onClick={handleMicClick}
+          disabled={error && error.includes('not-allowed')}
           className={`relative p-4 sm:p-6 rounded-full shadow-lg transition-all duration-300 touch-manipulation ${
             isListening
               ? 'bg-red-500 text-white hover:bg-red-600'
+              : error
+              ? 'bg-gray-300 text-gray-500'
               : 'bg-white text-primary hover:bg-primary hover:text-white'
-          }`}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          } ${error && error.includes('not-allowed') ? 'cursor-not-allowed opacity-50' : ''}`}
+          whileHover={!error ? { scale: 1.05 } : {}}
+          whileTap={!error ? { scale: 0.95 } : {}}
         >
           {isListening ? (
             <MicOff className="h-6 w-6 sm:h-8 sm:w-8" />
@@ -130,13 +172,31 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
             )}
           </motion.button>
         )}
+
+        {error && !error.includes('not-allowed') && (
+          <motion.button
+            onClick={handleRetry}
+            className="p-3 sm:p-4 rounded-full shadow-md bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 touch-manipulation"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6" />
+          </motion.button>
+        )}
       </div>
 
       {/* Status Text */}
       <div className="text-center mt-4">
         <p className="text-sm text-gray-600">
-          {isListening ? t('listening') : defaultPlaceholder}
+          {isListening ? t('listening') : error ? 'Click retry to try again' : defaultPlaceholder}
         </p>
+        {retryCount > 0 && (
+          <p className="text-xs text-gray-500 mt-1">
+            Retry attempt: {retryCount}
+          </p>
+        )}
       </div>
 
       <AnimatePresence>
@@ -165,6 +225,11 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
                 />
               ))}
             </div>
+            {interimTranscript && (
+              <p className="text-sm text-blue-600 mt-2 italic text-center">
+                "{interimTranscript}"
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -194,9 +259,35 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
           animate={{ opacity: 1, y: 0 }}
           className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg"
         >
-          <p className="text-red-700 text-sm">
-            {error === 'not-allowed' ? t('micPermissionNeeded') : error}
-          </p>
+          <div className="flex items-start space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-red-700 text-sm font-medium">
+                Speech Recognition Error
+              </p>
+              <p className="text-red-600 text-sm mt-1">
+                {getErrorMessage(error)}
+              </p>
+              {error.includes('network') && (
+                <div className="mt-2">
+                  <p className="text-red-600 text-xs">
+                    • Check your internet connection<br/>
+                    • Try refreshing the page<br/>
+                    • Ensure you're using HTTPS (secure connection)
+                  </p>
+                </div>
+              )}
+              {error.includes('not-allowed') && (
+                <div className="mt-2">
+                  <p className="text-red-600 text-xs">
+                    • Click the microphone icon in your browser's address bar<br/>
+                    • Select "Allow" for microphone access<br/>
+                    • Refresh the page and try again
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </motion.div>
       )}
     </div>
