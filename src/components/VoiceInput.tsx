@@ -32,7 +32,6 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
 
   const { speak, isSpeaking, cancel } = useSpeechSynthesis();
   const [showTranscript, setShowTranscript] = useState(false);
-  const [hasSpokenConfirmation, setHasSpokenConfirmation] = useState(false);
   const [lastTranscript, setLastTranscript] = useState('');
 
   const defaultPlaceholder = placeholder || t('clickMicToSpeak');
@@ -84,10 +83,10 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 justify-center sm:justify-start">
         <motion.button
           onClick={handleMicClick}
-          className={`relative p-4 rounded-full shadow-lg transition-all duration-300 ${
+          className={`relative p-4 sm:p-6 rounded-full shadow-lg transition-all duration-300 touch-manipulation ${
             isListening
               ? 'bg-red-500 text-white hover:bg-red-600'
               : 'bg-white text-primary hover:bg-primary hover:text-white'
@@ -96,9 +95,9 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
           whileTap={{ scale: 0.95 }}
         >
           {isListening ? (
-            <MicOff className="h-6 w-6" />
+            <MicOff className="h-6 w-6 sm:h-8 sm:w-8" />
           ) : (
-            <Mic className="h-6 w-6" />
+            <Mic className="h-6 w-6 sm:h-8 sm:w-8" />
           )}
           
           {/* Pulse animation when listening */}
@@ -114,7 +113,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
         {transcript && (
           <motion.button
             onClick={handleSpeakClick}
-            className={`p-3 rounded-full shadow-md transition-all duration-300 ${
+            className={`p-3 sm:p-4 rounded-full shadow-md transition-all duration-300 touch-manipulation ${
               isSpeaking
                 ? 'bg-orange-500 text-white hover:bg-orange-600'
                 : 'bg-white text-secondary hover:bg-secondary hover:text-white'
@@ -125,12 +124,19 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
             animate={{ opacity: 1, scale: 1 }}
           >
             {isSpeaking ? (
-              <VolumeX className="h-5 w-5" />
+              <VolumeX className="h-5 w-5 sm:h-6 sm:w-6" />
             ) : (
-              <Volume2 className="h-5 w-5" />
+              <Volume2 className="h-5 w-5 sm:h-6 sm:w-6" />
             )}
           </motion.button>
         )}
+      </div>
+
+      {/* Status Text */}
+      <div className="text-center mt-4">
+        <p className="text-sm text-gray-600">
+          {isListening ? t('listening') : defaultPlaceholder}
+        </p>
       </div>
 
       <AnimatePresence>
@@ -141,8 +147,8 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
             exit={{ opacity: 0, y: -10 }}
             className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
           >
-            <p className="text-sm text-blue-700 mb-2">{t('listening')}</p>
-            <div className="flex space-x-1">
+            <p className="text-sm text-blue-700 mb-2 text-center">{t('listening')}</p>
+            <div className="flex justify-center space-x-1">
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
@@ -171,8 +177,8 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
             exit={{ opacity: 0, y: -10 }}
             className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg"
           >
-            <p className="text-sm text-green-700 mb-2">{t('youSaid')}</p>
-            <p className="text-gray-800">
+            <p className="text-sm text-green-700 mb-2 font-medium">{t('youSaid')}</p>
+            <p className="text-gray-800 text-sm sm:text-base">
               {transcript}
               {interimTranscript && (
                 <span className="text-gray-500 italic">{interimTranscript}</span>
