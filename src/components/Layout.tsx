@@ -31,6 +31,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
     setIsMobileMenuOpen(false);
   };
 
+  const handleLogoClick = () => {
+    handleNavigation('dashboard');
+  };
+
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
@@ -41,12 +45,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo and Title */}
+            {/* Logo and Title - Clickable */}
             <div className="flex items-center">
-              <motion.div
-                className="flex items-center space-x-2"
+              <motion.button
+                onClick={handleLogoClick}
+                className="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <div className="bg-primary p-2 rounded-lg">
                   <BookOpen className="h-6 w-6 text-white" />
@@ -55,7 +62,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
                   <h1 className="text-xl font-bold text-gray-900">{t('appName')}</h1>
                   <p className="text-sm text-gray-600">{t('appNameTamil')}</p>
                 </div>
-              </motion.div>
+              </motion.button>
             </div>
             
             {/* Desktop Navigation */}
@@ -88,14 +95,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
       </header>
 
       <div className="flex">
-        {/* Desktop Sidebar */}
+        {/* Desktop Sidebar - Always visible on desktop */}
         <motion.nav
-          className="hidden lg:block w-64 bg-white shadow-sm min-h-screen sticky top-16"
+          className="hidden lg:flex lg:flex-col w-64 bg-white shadow-sm min-h-[calc(100vh-4rem)] sticky top-16"
           initial={{ x: -100 }}
           animate={{ x: 0 }}
           transition={{ type: "spring", stiffness: 100 }}
         >
-          <div className="p-4">
+          <div className="flex-1 p-4">
             <div className="space-y-2">
               {navItems.map((item) => (
                 <motion.button
@@ -116,6 +123,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
                 </motion.button>
               ))}
             </div>
+          </div>
+          
+          {/* Desktop Logout Button */}
+          <div className="p-4 border-t border-gray-200">
+            <motion.button
+              className="w-full flex items-center space-x-3 px-3 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="font-medium">{t('logout')}</span>
+            </motion.button>
           </div>
         </motion.nav>
 
@@ -146,7 +165,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
                       <motion.button
                         key={item.id}
                         onClick={() => handleNavigation(item.id)}
-                        className={`flex flex-col items-center space-y-2 p-4 rounded-lg transition-all ${
+                        className={`flex flex-col items-center space-y-2 p-4 rounded-lg transition-all touch-manipulation ${
                           currentPage === item.id
                             ? 'bg-primary text-white shadow-md'
                             : 'text-gray-700 hover:bg-gray-100'
@@ -163,7 +182,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
                   {/* Mobile Logout */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <motion.button
-                      className="w-full flex items-center justify-center space-x-2 p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="w-full flex items-center justify-center space-x-2 p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors touch-manipulation"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
