@@ -106,8 +106,11 @@ export const LessonPlanner: React.FC = () => {
   };
 
   const handleGenerate = async () => {
+    console.log('Generate button clicked');
+    
     if (!voiceInput.trim()) {
       speak(t('provideDetails') || 'Please provide lesson details first', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
+      setError('Please provide lesson details first');
       return;
     }
 
@@ -121,6 +124,7 @@ export const LessonPlanner: React.FC = () => {
     setCurrentStep(1);
     setError(null);
     
+    console.log('Starting lesson generation...');
     speak(`${t('processingRequest') || 'Processing your request'} for ${selectedGrade} ${selectedSubject}`, { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
     
     try {
@@ -141,8 +145,12 @@ export const LessonPlanner: React.FC = () => {
         topic: voiceInput
       };
 
+      console.log('Lesson parameters:', lessonParams);
+
       setProcessingStage('Generating comprehensive lesson plan...');
       const plan = await geminiService.generateLessonPlan(lessonParams);
+      
+      console.log('Lesson plan generated:', plan);
       
       setProcessingStage('Adding cultural context and assessments...');
       setGeneratedPlan(plan);
@@ -153,6 +161,7 @@ export const LessonPlanner: React.FC = () => {
       console.error('Error generating lesson plan:', error);
       setError(error.message || 'Failed to generate lesson plan. Please try again.');
       setCurrentStep(0);
+      speak('Sorry, there was an error generating the lesson. Please try again.', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
     } finally {
       setIsGenerating(false);
       setProcessingStage('');
@@ -172,11 +181,14 @@ export const LessonPlanner: React.FC = () => {
     };
 
     try {
+      setIsGenerating(true);
       const refreshedPlan = await geminiService.refreshLessonPlan(lessonParams);
       setGeneratedPlan(refreshedPlan);
       speak('Lesson plan refreshed with new content', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
     } catch (error: any) {
       setError(error.message || 'Failed to refresh lesson plan');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -440,16 +452,16 @@ export const LessonPlanner: React.FC = () => {
             <div className="flex justify-center">
               <motion.button
                 onClick={handleGenerate}
-                disabled={!voiceInput.trim() || learningObjectives.filter(obj => obj.trim()).length === 0}
+                disabled={!voiceInput.trim() || learningObjectives.filter(obj => obj.trim()).length === 0 || isGenerating}
                 className={`px-8 py-3 rounded-lg font-medium transition-all ${
-                  voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0
+                  voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0 && !isGenerating
                     ? 'bg-primary text-white hover:bg-primary/90 shadow-lg'
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 }`}
-                whileHover={voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0 ? { scale: 1.05 } : {}}
-                whileTap={voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0 ? { scale: 0.95 } : {}}
+                whileHover={voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0 && !isGenerating ? { scale: 1.05 } : {}}
+                whileTap={voiceInput.trim() && learningObjectives.filter(obj => obj.trim()).length > 0 && !isGenerating ? { scale: 0.95 } : {}}
               >
-                {t('generateLesson') || 'Generate Lesson'}
+                {isGenerating ? 'Generating...' : (t('generateLesson') || 'Generate Lesson')}
               </motion.button>
             </div>
           </motion.div>
@@ -547,7 +559,8 @@ export const LessonPlanner: React.FC = () => {
                 </motion.button>
                 <motion.button
                   onClick={handleRefreshLesson}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                  disabled={isGenerating}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   title="Refresh Lesson Plan"
@@ -599,7 +612,7 @@ export const LessonPlanner: React.FC = () => {
                     {t('learningObjectives') || 'Learning Objectives'}
                   </h4>
                   <ul className="space-y-2">
-                    {generatedPlan.objectives.map((objective, index) => (
+                    {generatedPlan.objectives && generatedPlan.objectives.map((objective, index) => (
                       <li key={index} className="flex items-start">
                         <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
                         <span className="text-gray-700">{objective}</span>
@@ -615,7 +628,7 @@ export const LessonPlanner: React.FC = () => {
                     {t('activities') || 'Activities'}
                   </h4>
                   <div className="space-y-4">
-                    {generatedPlan.activities.map((activity) => (
+                    {generatedPlan.activities && generatedPlan.activities.map((activity) => (
                       <div key={activity.id} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-2">
@@ -690,7 +703,7 @@ export const LessonPlanner: React.FC = () => {
                           <div className="text-xs text-purple-700">
                             <strong>Implementation:</strong>
                             <ul className="list-disc list-inside mt-1">
-                              {strategy.implementation.map((impl, idx) => (
+                              {strategy.implementation && strategy.implementation.map((impl, idx) => (
                                 <li key={idx}>{impl}</li>
                               ))}
                             </ul>
@@ -721,7 +734,7 @@ export const LessonPlanner: React.FC = () => {
                           <div className="text-xs text-green-700">
                             <strong>Creation Steps:</strong>
                             <ol className="list-decimal list-inside mt-1">
-                              {aid.creationInstructions.map((instruction, idx) => (
+                              {aid.creationInstructions && aid.creationInstructions.map((instruction, idx) => (
                                 <li key={idx}>{instruction}</li>
                               ))}
                             </ol>
@@ -738,7 +751,7 @@ export const LessonPlanner: React.FC = () => {
                     {t('requiredMaterials') || 'Required Materials'}
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {generatedPlan.materials.map((material, index) => (
+                    {generatedPlan.materials && generatedPlan.materials.map((material, index) => (
                       <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
                         <CheckCircle className="h-4 w-4 text-green-500" />
                         <span className="text-sm text-gray-700">{material}</span>
@@ -753,7 +766,7 @@ export const LessonPlanner: React.FC = () => {
                     Assessment Methods
                   </h4>
                   <div className="space-y-3">
-                    {generatedPlan.assessment.map((method, index) => (
+                    {generatedPlan.assessment && generatedPlan.assessment.map((method, index) => (
                       <div key={index} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between mb-2">
                           <h5 className="font-medium text-blue-900">{method.type}</h5>
@@ -765,7 +778,7 @@ export const LessonPlanner: React.FC = () => {
                         <div className="text-xs text-blue-700">
                           <strong>Rubric:</strong>
                           <ul className="list-disc list-inside mt-1">
-                            {method.rubric.map((criterion, idx) => (
+                            {method.rubric && method.rubric.map((criterion, idx) => (
                               <li key={idx}>{criterion}</li>
                             ))}
                           </ul>
@@ -790,7 +803,7 @@ export const LessonPlanner: React.FC = () => {
                             <div>
                               <h6 className="text-xs font-medium text-orange-800 mb-1">Adaptations:</h6>
                               <ul className="list-disc list-inside text-xs text-orange-700">
-                                {diff.adaptations.map((adaptation, idx) => (
+                                {diff.adaptations && diff.adaptations.map((adaptation, idx) => (
                                   <li key={idx}>{adaptation}</li>
                                 ))}
                               </ul>
@@ -798,7 +811,7 @@ export const LessonPlanner: React.FC = () => {
                             <div>
                               <h6 className="text-xs font-medium text-orange-800 mb-1">Support Materials:</h6>
                               <ul className="list-disc list-inside text-xs text-orange-700">
-                                {diff.supportMaterials.map((material, idx) => (
+                                {diff.supportMaterials && diff.supportMaterials.map((material, idx) => (
                                   <li key={idx}>{material}</li>
                                 ))}
                               </ul>
