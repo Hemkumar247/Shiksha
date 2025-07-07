@@ -25,6 +25,7 @@ const translations = {
     pathfinder: 'PathFinder',
     profile: 'Profile',
     settings: 'Settings',
+    feedback: 'Feedback',
     
     // Dashboard
     welcomeMessage: 'Welcome back, Sudha!',
@@ -216,6 +217,7 @@ const translations = {
     pathfinder: 'பாதை கண்டுபிடிப்பாளர்',
     profile: 'சுயவிவரம்',
     settings: 'அமைப்புகள்',
+    feedback: 'கருத்து',
     
     // Dashboard
     welcomeMessage: 'வணக்கம், சுதா அக்கா!',

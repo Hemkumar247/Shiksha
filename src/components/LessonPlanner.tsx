@@ -11,35 +11,25 @@ import {
   Star,
   Volume2,
   Download,
-  GraduationCap
+  GraduationCap,
+  Plus,
+  Trash2,
+  Save,
+  Edit,
+  ArrowRight,
+  PlayCircle,
+  MessageCircle,
+  Shuffle
 } from 'lucide-react';
 import { VoiceInput } from './VoiceInput';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { useLanguage } from '../contexts/LanguageContext';
-
-interface Activity {
-  id: string;
-  name: string;
-  duration: number;
-  description: string;
-  type: 'discussion' | 'hands-on' | 'presentation' | 'assessment';
-}
-
-interface LessonPlan {
-  title: string;
-  subject: string;
-  grade: string;
-  duration: number;
-  objectives: string[];
-  activities: Activity[];
-  materials: string[];
-  assessment: string;
-  culturalContext?: string;
-  festivals?: string[];
-}
+import { useData } from '../contexts/DataContext';
+import { LessonPlan, TeachingStep, LearningActivity } from '../types';
 
 export const LessonPlanner: React.FC = () => {
   const { t, language } = useLanguage();
+  const { addLessonPlan, updateLessonPlan } = useData();
   const [currentStep, setCurrentStep] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<LessonPlan | null>(null);
@@ -47,6 +37,7 @@ export const LessonPlanner: React.FC = () => {
   const [selectedGrade, setSelectedGrade] = useState('Grade 3');
   const [selectedSubject, setSelectedSubject] = useState('Tamil');
   const [selectedDuration, setSelectedDuration] = useState(45);
+  const [isEditing, setIsEditing] = useState(false);
   const { speak, isSpeaking } = useSpeechSynthesis();
 
   const gradeOptions = [
@@ -64,6 +55,15 @@ export const LessonPlanner: React.FC = () => {
     { value: 45, label: '45 minutes' },
     { value: 60, label: '1 hour' },
     { value: 90, label: '1.5 hours' }
+  ];
+
+  const activityTypes = [
+    { value: 'interactive-group', label: 'Interactive Group Exercise', icon: Users },
+    { value: 'hands-on-demo', label: 'Hands-on Demonstration', icon: PlayCircle },
+    { value: 'role-playing', label: 'Role-playing Scenario', icon: Users },
+    { value: 'problem-solving', label: 'Problem-solving Challenge', icon: Target },
+    { value: 'real-world', label: 'Real-world Application', icon: Star },
+    { value: 'digital-multimedia', label: 'Digital/Multimedia Resource', icon: BookOpen }
   ];
 
   const steps = [
@@ -91,11 +91,11 @@ export const LessonPlanner: React.FC = () => {
     setVoiceInput(transcript);
   };
 
-  const generateSamplePlan = (): LessonPlan => {
-    // Generate content based on selected parameters
+  const generateComprehensivePlan = (): LessonPlan => {
     const gradeNumber = selectedGrade.split(' ')[1];
     
     return {
+      id: Date.now().toString(),
       title: `${selectedSubject} - ${voiceInput || t('sampleLessonTitle')}`,
       subject: selectedSubject,
       grade: selectedGrade,
@@ -113,27 +113,6 @@ export const LessonPlanner: React.FC = () => {
           duration: Math.floor(selectedDuration * 0.2),
           description: `Introduction and explanation suitable for ${selectedGrade}`,
           type: 'presentation'
-        },
-        {
-          id: '2',
-          name: t('sampleActivity2'),
-          duration: Math.floor(selectedDuration * 0.4),
-          description: `Hands-on activity designed for ${selectedGrade} level`,
-          type: 'hands-on'
-        },
-        {
-          id: '3',
-          name: t('sampleActivity3'),
-          duration: Math.floor(selectedDuration * 0.3),
-          description: `Group discussion appropriate for ${selectedGrade}`,
-          type: 'discussion'
-        },
-        {
-          id: '4',
-          name: t('sampleActivity4'),
-          duration: Math.floor(selectedDuration * 0.1),
-          description: `Assessment suitable for ${selectedGrade} students`,
-          type: 'assessment'
         }
       ],
       materials: [
@@ -144,7 +123,128 @@ export const LessonPlanner: React.FC = () => {
       ],
       assessment: `Students should demonstrate understanding appropriate for ${selectedGrade} level`,
       culturalContext: t('sampleCulturalContext'),
-      festivals: [t('tamilNewYear'), 'Tamil Language Day']
+      festivals: [t('tamilNewYear'), 'Tamil Language Day'],
+      createdAt: new Date(),
+      teacherId: 'teacher1',
+      preparationRequirements: [
+        'Review lesson objectives and materials',
+        'Prepare visual aids and handouts',
+        'Set up classroom for group activities',
+        'Test any technology or multimedia resources',
+        'Prepare assessment materials'
+      ],
+      teachingSequence: [
+        {
+          id: '1',
+          step: 'Opening & Review',
+          description: 'Greet students, take attendance, and review previous lesson',
+          duration: Math.floor(selectedDuration * 0.1),
+          materials: ['Attendance sheet', 'Previous lesson notes'],
+          notes: 'Check homework and address any questions'
+        },
+        {
+          id: '2',
+          step: 'Introduction',
+          description: 'Introduce new topic with engaging hook',
+          duration: Math.floor(selectedDuration * 0.15),
+          materials: ['Visual aids', 'Props or examples'],
+          notes: 'Connect to students\' prior knowledge'
+        },
+        {
+          id: '3',
+          step: 'Main Content Delivery',
+          description: 'Present core concepts with examples',
+          duration: Math.floor(selectedDuration * 0.35),
+          materials: ['Textbook', 'Blackboard', 'Handouts'],
+          notes: 'Use multiple teaching methods for different learning styles'
+        },
+        {
+          id: '4',
+          step: 'Guided Practice',
+          description: 'Work through examples together',
+          duration: Math.floor(selectedDuration * 0.25),
+          materials: ['Practice worksheets', 'Manipulatives'],
+          notes: 'Encourage student participation and questions'
+        },
+        {
+          id: '5',
+          step: 'Assessment & Closure',
+          description: 'Quick assessment and lesson summary',
+          duration: Math.floor(selectedDuration * 0.15),
+          materials: ['Assessment materials', 'Homework sheets'],
+          notes: 'Assign homework and preview next lesson'
+        }
+      ],
+      discussionPrompts: [
+        'What do you already know about this topic?',
+        'How does this connect to what we learned yesterday?',
+        'Can you give me an example from your daily life?',
+        'What questions do you have so far?',
+        'How might you explain this to a friend?'
+      ],
+      transitionPoints: [
+        'Now that we understand the basics, let\'s explore...',
+        'Let\'s move from theory to practice',
+        'Time to work together on applying what we\'ve learned',
+        'Let\'s see how well you understand by...'
+      ],
+      learningActivities: [
+        {
+          id: '1',
+          type: 'interactive-group',
+          title: 'Collaborative Learning Exercise',
+          description: 'Students work in small groups to explore concepts',
+          duration: 15,
+          participants: 'Groups of 4-5 students',
+          materials: ['Group worksheets', 'Markers', 'Chart paper'],
+          instructions: [
+            'Divide into groups of 4-5 students',
+            'Each group receives a different aspect to explore',
+            'Discuss and create a visual representation',
+            'Present findings to the class',
+            'Ask questions and provide feedback'
+          ]
+        },
+        {
+          id: '2',
+          type: 'hands-on-demo',
+          title: 'Interactive Demonstration',
+          description: 'Teacher demonstrates with student participation',
+          duration: 10,
+          participants: 'Whole class with individual volunteers',
+          materials: ['Demo materials', 'Safety equipment if needed'],
+          instructions: [
+            'Teacher explains the demonstration',
+            'Students predict outcomes',
+            'Volunteers assist with demonstration',
+            'Class observes and takes notes',
+            'Discuss results and implications'
+          ]
+        },
+        {
+          id: '3',
+          type: 'problem-solving',
+          title: 'Challenge Activity',
+          description: 'Students solve real-world problems using new concepts',
+          duration: 12,
+          participants: 'Pairs or small groups',
+          materials: ['Problem scenarios', 'Solution sheets', 'Reference materials'],
+          instructions: [
+            'Present real-world problem scenario',
+            'Students analyze the problem',
+            'Apply lesson concepts to find solutions',
+            'Compare different approaches',
+            'Discuss most effective solutions'
+          ]
+        }
+      ],
+      pacing: {
+        introduction: Math.floor(selectedDuration * 0.15),
+        mainContent: Math.floor(selectedDuration * 0.35),
+        activities: Math.floor(selectedDuration * 0.35),
+        assessment: Math.floor(selectedDuration * 0.1),
+        closure: Math.floor(selectedDuration * 0.05)
+      }
     };
   };
 
@@ -162,12 +262,24 @@ export const LessonPlanner: React.FC = () => {
     // Simulate AI processing
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    const plan = generateSamplePlan();
+    const plan = generateComprehensivePlan();
     setGeneratedPlan(plan);
     setCurrentStep(2);
     setIsGenerating(false);
     
     speak(t('lessonReady'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
+  };
+
+  const handleSavePlan = () => {
+    if (generatedPlan) {
+      if (isEditing) {
+        updateLessonPlan(generatedPlan.id, generatedPlan);
+        speak('Lesson plan updated successfully', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
+      } else {
+        addLessonPlan(generatedPlan);
+        speak('Lesson plan saved successfully', { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
+      }
+    }
   };
 
   const handleSpeak = (text: string) => {
@@ -179,23 +291,68 @@ export const LessonPlanner: React.FC = () => {
     // Download logic here
   };
 
-  const ActivityTypeIcon = ({ type }: { type: string }) => {
-    switch (type) {
-      case 'presentation':
-        return <BookOpen className="h-4 w-4" />;
-      case 'hands-on':
-        return <Lightbulb className="h-4 w-4" />;
-      case 'discussion':
-        return <Users className="h-4 w-4" />;
-      case 'assessment':
-        return <CheckCircle className="h-4 w-4" />;
-      default:
-        return <BookOpen className="h-4 w-4" />;
+  const addTeachingStep = () => {
+    if (generatedPlan) {
+      const newStep: TeachingStep = {
+        id: Date.now().toString(),
+        step: 'New Step',
+        description: 'Description of the new step',
+        duration: 5,
+        materials: [],
+        notes: ''
+      };
+      setGeneratedPlan({
+        ...generatedPlan,
+        teachingSequence: [...generatedPlan.teachingSequence, newStep]
+      });
     }
   };
 
+  const removeTeachingStep = (stepId: string) => {
+    if (generatedPlan) {
+      setGeneratedPlan({
+        ...generatedPlan,
+        teachingSequence: generatedPlan.teachingSequence.filter(step => step.id !== stepId)
+      });
+    }
+  };
+
+  const addLearningActivity = () => {
+    if (generatedPlan) {
+      const newActivity: LearningActivity = {
+        id: Date.now().toString(),
+        type: 'interactive-group',
+        title: 'New Activity',
+        description: 'Description of the new activity',
+        duration: 10,
+        participants: 'All students',
+        materials: [],
+        instructions: []
+      };
+      setGeneratedPlan({
+        ...generatedPlan,
+        learningActivities: [...generatedPlan.learningActivities, newActivity]
+      });
+    }
+  };
+
+  const removeLearningActivity = (activityId: string) => {
+    if (generatedPlan) {
+      setGeneratedPlan({
+        ...generatedPlan,
+        learningActivities: generatedPlan.learningActivities.filter(activity => activity.id !== activityId)
+      });
+    }
+  };
+
+  const ActivityTypeIcon = ({ type }: { type: string }) => {
+    const activityType = activityTypes.find(at => at.value === type);
+    const Icon = activityType?.icon || BookOpen;
+    return <Icon className="h-4 w-4" />;
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Progress Steps */}
       <div className="flex items-center justify-between mb-8">
         {steps.map((step, index) => (
@@ -247,7 +404,6 @@ export const LessonPlanner: React.FC = () => {
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {/* Grade Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Grade Level
@@ -265,7 +421,6 @@ export const LessonPlanner: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Subject Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Subject
@@ -283,7 +438,6 @@ export const LessonPlanner: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Duration Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Duration
@@ -302,7 +456,6 @@ export const LessonPlanner: React.FC = () => {
                 </div>
               </div>
 
-              {/* Selected Parameters Display */}
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h4 className="font-medium text-blue-900 mb-2">Selected Parameters:</h4>
                 <div className="flex flex-wrap gap-2">
@@ -373,7 +526,7 @@ export const LessonPlanner: React.FC = () => {
                   {t('generatingLesson')}
                 </h2>
                 <p className="text-gray-600">
-                  Creating lesson plan for {selectedGrade} {selectedSubject} ({selectedDuration} minutes)
+                  Creating comprehensive lesson plan for {selectedGrade} {selectedSubject} ({selectedDuration} minutes)
                 </p>
               </div>
 
@@ -398,7 +551,8 @@ export const LessonPlanner: React.FC = () => {
               <div className="mt-6 text-sm text-gray-500">
                 <p>{t('generatingStructure')}</p>
                 <p>{t('planningActivities')}</p>
-                <p>{t('addingFestivalContext')}</p>
+                <p>• Creating teaching sequence</p>
+                <p>• Designing learning activities</p>
                 <p>{t('addingCulturalContext')}</p>
               </div>
             </div>
@@ -429,6 +583,15 @@ export const LessonPlanner: React.FC = () => {
                 >
                   <Volume2 className="h-4 w-4" />
                   <span>{t('listen')}</span>
+                </motion.button>
+                <motion.button
+                  onClick={handleSavePlan}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Save Plan</span>
                 </motion.button>
                 <motion.button
                   onClick={handleDownload}
@@ -462,7 +625,213 @@ export const LessonPlanner: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-8">
+                {/* Preparation Requirements */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                    Pre-lesson Preparation
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {generatedPlan.preparationRequirements.map((req, index) => (
+                      <div key={index} className="flex items-center space-x-2 p-2 bg-green-50 rounded">
+                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <span className="text-sm text-green-800">{req}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Teaching Sequence */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-900 flex items-center">
+                      <ArrowRight className="h-5 w-5 mr-2 text-blue-500" />
+                      Step-by-step Teaching Sequence
+                    </h4>
+                    <motion.button
+                      onClick={addTeachingStep}
+                      className="flex items-center space-x-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 text-sm"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>Add Step</span>
+                    </motion.button>
+                  </div>
+                  <div className="space-y-4">
+                    {generatedPlan.teachingSequence.map((step, index) => (
+                      <div key={step.id} className="border border-gray-200 rounded-lg p-4 relative">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                {index + 1}
+                              </div>
+                              <h5 className="font-medium text-gray-900">{step.step}</h5>
+                              <span className="text-sm text-gray-500">({step.duration} min)</span>
+                            </div>
+                            <p className="text-gray-700 text-sm mb-2 ml-11">{step.description}</p>
+                            {step.materials && step.materials.length > 0 && (
+                              <div className="ml-11">
+                                <span className="text-xs font-medium text-gray-600">Materials: </span>
+                                <span className="text-xs text-gray-600">{step.materials.join(', ')}</span>
+                              </div>
+                            )}
+                            {step.notes && (
+                              <div className="ml-11 mt-1">
+                                <span className="text-xs font-medium text-gray-600">Notes: </span>
+                                <span className="text-xs text-gray-600">{step.notes}</span>
+                              </div>
+                            )}
+                          </div>
+                          <motion.button
+                            onClick={() => removeTeachingStep(step.id)}
+                            className="p-1 text-red-400 hover:text-red-600"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </motion.button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Discussion Prompts */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <MessageCircle className="h-5 w-5 mr-2 text-purple-500" />
+                    Discussion Prompts & Questions
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {generatedPlan.discussionPrompts.map((prompt, index) => (
+                      <div key={index} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <p className="text-purple-800 text-sm">"{prompt}"</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Learning Activities */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-900 flex items-center">
+                      <Lightbulb className="h-5 w-5 mr-2 text-yellow-500" />
+                      Engaging Learning Activities
+                    </h4>
+                    <motion.button
+                      onClick={addLearningActivity}
+                      className="flex items-center space-x-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 text-sm"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>Add Activity</span>
+                    </motion.button>
+                  </div>
+                  <div className="space-y-4">
+                    {generatedPlan.learningActivities.map((activity) => (
+                      <div key={activity.id} className="border border-gray-200 rounded-lg p-4 relative">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2 bg-yellow-100 rounded-full">
+                              <ActivityTypeIcon type={activity.type} />
+                            </div>
+                            <div>
+                              <h5 className="font-medium text-gray-900">{activity.title}</h5>
+                              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                <span>{activity.duration} minutes</span>
+                                <span>•</span>
+                                <span>{activity.participants}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <motion.button
+                            onClick={() => removeLearningActivity(activity.id)}
+                            className="p-1 text-red-400 hover:text-red-600"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </motion.button>
+                        </div>
+                        
+                        <p className="text-gray-700 text-sm mb-3">{activity.description}</p>
+                        
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-xs font-medium text-gray-600">Materials: </span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {activity.materials.map((material, idx) => (
+                                <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                  {material}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <span className="text-xs font-medium text-gray-600">Instructions:</span>
+                            <ol className="list-decimal list-inside mt-1 space-y-1">
+                              {activity.instructions.map((instruction, idx) => (
+                                <li key={idx} className="text-xs text-gray-600">{instruction}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Transition Points */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <Shuffle className="h-5 w-5 mr-2 text-indigo-500" />
+                    Smooth Transition Points
+                  </h4>
+                  <div className="space-y-2">
+                    {generatedPlan.transitionPoints.map((transition, index) => (
+                      <div key={index} className="flex items-center space-x-3 p-3 bg-indigo-50 rounded-lg">
+                        <ArrowRight className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                        <p className="text-indigo-800 text-sm">"{transition}"</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pacing Guide */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <Clock className="h-5 w-5 mr-2 text-orange-500" />
+                    Lesson Pacing Guide
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="text-center p-3 bg-orange-50 rounded-lg">
+                      <div className="text-lg font-bold text-orange-600">{generatedPlan.pacing.introduction}m</div>
+                      <div className="text-sm text-orange-800">Introduction</div>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <div className="text-lg font-bold text-blue-600">{generatedPlan.pacing.mainContent}m</div>
+                      <div className="text-sm text-blue-800">Main Content</div>
+                    </div>
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <div className="text-lg font-bold text-green-600">{generatedPlan.pacing.activities}m</div>
+                      <div className="text-sm text-green-800">Activities</div>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                      <div className="text-lg font-bold text-purple-600">{generatedPlan.pacing.assessment}m</div>
+                      <div className="text-sm text-purple-800">Assessment</div>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-lg font-bold text-gray-600">{generatedPlan.pacing.closure}m</div>
+                      <div className="text-sm text-gray-800">Closure</div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Objectives */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
@@ -477,30 +846,6 @@ export const LessonPlanner: React.FC = () => {
                       </li>
                     ))}
                   </ul>
-                </div>
-
-                {/* Activities */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                    <Lightbulb className="h-5 w-5 mr-2 text-secondary" />
-                    {t('activities')}
-                  </h4>
-                  <div className="space-y-3">
-                    {generatedPlan.activities.map((activity) => (
-                      <div key={activity.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            <ActivityTypeIcon type={activity.type} />
-                            <span className="font-medium text-gray-900">{activity.name}</span>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            {activity.duration} {language === 'ta' ? 'நிமிடங்கள்' : 'minutes'}
-                          </span>
-                        </div>
-                        <p className="text-gray-700 text-sm">{activity.description}</p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Materials */}
@@ -557,7 +902,6 @@ export const LessonPlanner: React.FC = () => {
               </h4>
               <VoiceInput
                 onTranscript={(text) => {
-                  // Handle refinement requests
                   speak(t('makingChanges'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
                 }}
                 placeholder={t('modificationPrompt')}
