@@ -19,7 +19,9 @@ import {
   ArrowRight,
   PlayCircle,
   MessageCircle,
-  Shuffle
+  Shuffle,
+  Type,
+  Mic
 } from 'lucide-react';
 import { VoiceInput } from './VoiceInput';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
@@ -34,6 +36,8 @@ export const LessonPlanner: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<LessonPlan | null>(null);
   const [voiceInput, setVoiceInput] = useState('');
+  const [textInput, setTextInput] = useState('');
+  const [inputMethod, setInputMethod] = useState<'voice' | 'text'>('voice');
   const [selectedGrade, setSelectedGrade] = useState('Grade 3');
   const [selectedSubject, setSelectedSubject] = useState('Tamil');
   const [selectedDuration, setSelectedDuration] = useState(45);
@@ -91,12 +95,17 @@ export const LessonPlanner: React.FC = () => {
     setVoiceInput(transcript);
   };
 
+  const getCurrentInput = () => {
+    return inputMethod === 'voice' ? voiceInput : textInput;
+  };
+
   const generateComprehensivePlan = (): LessonPlan => {
     const gradeNumber = selectedGrade.split(' ')[1];
+    const currentInput = getCurrentInput();
     
     return {
       id: Date.now().toString(),
-      title: `${selectedSubject} - ${voiceInput || t('sampleLessonTitle')}`,
+      title: `${selectedSubject} - ${currentInput || t('sampleLessonTitle')}`,
       subject: selectedSubject,
       grade: selectedGrade,
       duration: selectedDuration,
@@ -249,7 +258,8 @@ export const LessonPlanner: React.FC = () => {
   };
 
   const handleGenerate = async () => {
-    if (!voiceInput.trim()) {
+    const currentInput = getCurrentInput();
+    if (!currentInput.trim()) {
       speak(t('provideDetails'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
       return;
     }
@@ -392,7 +402,7 @@ export const LessonPlanner: React.FC = () => {
                 {t('describeLessonTitle')}
               </h2>
               <p className="text-gray-600">
-                {t('describeLessonSubtitle')}
+                Use voice input or type your lesson details
               </p>
             </div>
 
@@ -472,21 +482,88 @@ export const LessonPlanner: React.FC = () => {
               </div>
             </div>
 
-            {/* Voice Input Section */}
+            {/* Input Method Selection */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Describe Your Lesson Topic
               </h3>
-              <VoiceInput
-                onTranscript={handleVoiceInput}
-                placeholder={`Tell me about the ${selectedSubject} topic you want to teach to ${selectedGrade} students...`}
-                autoSpeak={true}
-              />
               
-              {voiceInput && (
-                <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                  <h4 className="font-medium text-green-900 mb-2">{t('yourRequest')}</h4>
-                  <p className="text-green-800">{voiceInput}</p>
+              {/* Input Method Toggle */}
+              <div className="flex items-center justify-center mb-6">
+                <div className="bg-gray-100 p-1 rounded-lg flex">
+                  <motion.button
+                    onClick={() => setInputMethod('voice')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md font-medium transition-all ${
+                      inputMethod === 'voice'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Mic className="h-4 w-4" />
+                    <span>Voice Input</span>
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setInputMethod('text')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md font-medium transition-all ${
+                      inputMethod === 'text'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Type className="h-4 w-4" />
+                    <span>Text Input</span>
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Voice Input Section */}
+              {inputMethod === 'voice' && (
+                <div>
+                  <VoiceInput
+                    onTranscript={handleVoiceInput}
+                    placeholder={`Tell me about the ${selectedSubject} topic you want to teach to ${selectedGrade} students...`}
+                    autoSpeak={true}
+                  />
+                  
+                  {voiceInput && (
+                    <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                      <h4 className="font-medium text-green-900 mb-2">{t('yourRequest')}</h4>
+                      <p className="text-green-800">{voiceInput}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Text Input Section */}
+              {inputMethod === 'text' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lesson Description
+                  </label>
+                  <textarea
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder={`Describe the ${selectedSubject} topic you want to teach to ${selectedGrade} students. Include key concepts, learning goals, and any specific requirements...`}
+                  />
+                  <p className="text-sm text-gray-500 mt-2">
+                    Be as detailed as possible to generate a comprehensive lesson plan.
+                  </p>
+                  
+                  {textInput && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">Your Lesson Description:</h4>
+                      <p className="text-blue-800 text-sm">{textInput}</p>
+                      <div className="mt-2 text-xs text-blue-600">
+                        Character count: {textInput.length}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -494,14 +571,14 @@ export const LessonPlanner: React.FC = () => {
             <div className="flex justify-center">
               <motion.button
                 onClick={handleGenerate}
-                disabled={!voiceInput.trim()}
+                disabled={!getCurrentInput().trim()}
                 className={`px-8 py-3 rounded-lg font-medium transition-all ${
-                  voiceInput.trim()
+                  getCurrentInput().trim()
                     ? 'bg-primary text-white hover:bg-primary/90 shadow-lg'
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 }`}
-                whileHover={voiceInput.trim() ? { scale: 1.05 } : {}}
-                whileTap={voiceInput.trim() ? { scale: 0.95 } : {}}
+                whileHover={getCurrentInput().trim() ? { scale: 1.05 } : {}}
+                whileTap={getCurrentInput().trim() ? { scale: 0.95 } : {}}
               >
                 {t('generateLesson')}
               </motion.button>
@@ -895,18 +972,69 @@ export const LessonPlanner: React.FC = () => {
               </div>
             </div>
 
-            {/* Follow-up Voice Input */}
+            {/* Follow-up Input */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <h4 className="font-semibold text-gray-900 mb-4">
                 {t('needModifications')}
               </h4>
-              <VoiceInput
-                onTranscript={(text) => {
-                  speak(t('makingChanges'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
-                }}
-                placeholder={t('modificationPrompt')}
-                autoSpeak={true}
-              />
+              
+              {/* Input method toggle for modifications */}
+              <div className="flex items-center justify-center mb-4">
+                <div className="bg-gray-100 p-1 rounded-lg flex">
+                  <motion.button
+                    onClick={() => setInputMethod('voice')}
+                    className={`flex items-center space-x-2 px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                      inputMethod === 'voice'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Mic className="h-3 w-3" />
+                    <span>Voice</span>
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setInputMethod('text')}
+                    className={`flex items-center space-x-2 px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                      inputMethod === 'text'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Type className="h-3 w-3" />
+                    <span>Text</span>
+                  </motion.button>
+                </div>
+              </div>
+
+              {inputMethod === 'voice' ? (
+                <VoiceInput
+                  onTranscript={(text) => {
+                    speak(t('makingChanges'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' });
+                  }}
+                  placeholder={t('modificationPrompt')}
+                  autoSpeak={true}
+                />
+              ) : (
+                <div>
+                  <textarea
+                    placeholder="Type your modification requests here..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                  <motion.button
+                    className="mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => speak(t('makingChanges'), { lang: language === 'ta' ? 'ta-IN' : 'en-US' })}
+                  >
+                    Apply Changes
+                  </motion.button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
