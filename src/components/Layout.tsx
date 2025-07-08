@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, User, BarChart3, Settings, LogOut, Users, Calendar, Camera, Route, Menu, X, MessageSquare } from 'lucide-react';
+import { BookOpen, User, BarChart3, Settings, LogOut, Users, Calendar, Camera, Route, Menu, X, MessageSquare, FileText } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageToggle } from './LanguageToggle';
 
@@ -23,6 +23,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
     { id: 'calendar', icon: Calendar, label: t('calendar') },
     { id: 'chalkvision', icon: Camera, label: t('chalkVision') },
     { id: 'pathfinder', icon: Route, label: t('pathfinder') },
+    { id: 'documents', icon: FileText, label: 'My Documents' },
     { id: 'profile', icon: User, label: t('profile') },
     { id: 'settings', icon: Settings, label: t('settings') }
   ];

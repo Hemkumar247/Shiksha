@@ -12,6 +12,7 @@ import { CalendarPage } from './components/CalendarPage';
 import { ChalkVisionPage } from './components/ChalkVisionPage';
 import { PathFinderPage } from './components/PathFinderPage';
 import { FeedbackPage } from './components/FeedbackPage';
+import { MyDocumentsPage } from './components/MyDocuments/MyDocumentsPage';
 import { ProfilePage } from './components/ProfilePage';
 import { SettingsPage } from './components/SettingsPage';
 
@@ -36,6 +37,8 @@ function App() {
         return <ChalkVisionPage />;
       case 'pathfinder':
         return <PathFinderPage />;
+      case 'documents':
+        return <MyDocumentsPage />;
       case 'profile':
         return (
           <ProfilePage />
