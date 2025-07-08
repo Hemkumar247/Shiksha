@@ -61,7 +61,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
                 </div>
                 <div className="hidden sm:block">
                   <h1 className="text-xl font-bold text-gray-900">{t('appName')}</h1>
-                  <p className="text-sm text-gray-600">{t('appNameTamil')}</p>
+                  <p className="text-sm text-gray-600">शिक्षा</p>
                 </div>
               </motion.button>
             </div>

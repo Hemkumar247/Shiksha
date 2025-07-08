@@ -12,7 +12,7 @@ const translations = {
   en: {
     // Header
     appName: 'Shiksha',
-    appNameTamil: 'कल्वी',
+    appNameHindi: 'शिक्षा',
     logout: 'Logout',
     
     // Navigation
