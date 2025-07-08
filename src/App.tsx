@@ -12,6 +12,8 @@ import { CalendarPage } from './components/CalendarPage';
 import { ChalkVisionPage } from './components/ChalkVisionPage';
 import { PathFinderPage } from './components/PathFinderPage';
 import { FeedbackPage } from './components/FeedbackPage';
+import { ProfilePage } from './components/ProfilePage';
+import { SettingsPage } from './components/SettingsPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -36,21 +38,11 @@ function App() {
         return <PathFinderPage />;
       case 'profile':
         return (
-          <div className="text-center py-20">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Profile
-            </h2>
-            <p className="text-gray-600">Profile page coming soon...</p>
-          </div>
+          <ProfilePage />
         );
       case 'settings':
         return (
-          <div className="text-center py-20">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Settings
-            </h2>
-            <p className="text-gray-600">Settings page coming soon...</p>
-          </div>
+          <SettingsPage />
         );
       default:
         return <Dashboard onNavigate={setCurrentPage} />;
