@@ -121,10 +121,18 @@ export class GeminiService {
 
   async analyzeImage(imageData: string, prompt: string): Promise<string> {
     try {
+      if (!imageData.startsWith('data:')) {
+        throw new Error('Invalid image data format');
+      }
+      const [meta, data] = imageData.split(',');
+      const mimeType = meta.match(/:(.*?);/)?.[1];
+      if (!mimeType) {
+        throw new Error('Could not determine mime type from image data');
+      }
       const imagePart = {
         inlineData: {
-          data: imageData.split(',')[1],
-          mimeType: 'image/jpeg'
+          data,
+          mimeType
         }
       };
       const result = await this.visionModel.generateContent([prompt, imagePart]);

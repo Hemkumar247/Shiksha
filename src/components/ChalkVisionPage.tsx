@@ -52,10 +52,13 @@ export const ChalkVisionPage: React.FC = () => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setSelectedImage(imageUrl);
-      setExtractedContent(null);
-      setVisualizedContent(null);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        setExtractedContent(null);
+        setVisualizedContent(null);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
