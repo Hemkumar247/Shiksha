@@ -18,6 +18,7 @@ import {
   Pause
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { geminiService } from '../services/geminiService';
 
 interface ExtractedContent {
   text: string;
@@ -51,55 +52,80 @@ export const ChalkVisionPage: React.FC = () => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setSelectedImage(imageUrl);
-      setExtractedContent(null);
-      setVisualizedContent(null);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        setExtractedContent(null);
+        setVisualizedContent(null);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleAnalyzeContent = async () => {
     if (!selectedImage) return;
-    
+
     setIsAnalyzing(true);
-    
-    // Simulate AI processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Simulate extracted content based on selected grade
-    const mockContent: ExtractedContent = {
-      text: `Mathematical equation: 2x + 5 = 15\nSolve for x\nStep 1: Subtract 5 from both sides\n2x = 10\nStep 2: Divide by 2\nx = 5`,
-      concepts: ['Linear Equations', 'Algebraic Manipulation', 'Variable Isolation'],
-      difficulty: selectedGrade,
-      suggestions: [
-        'Add a visual representation using balance scales',
-        'Provide more practice problems with similar structure',
-        'Create a quiz question to test understanding',
-        'Show real-world applications of linear equations'
-      ]
-    };
-    
-    setExtractedContent(mockContent);
-    setIsAnalyzing(false);
+    try {
+      const prompt = `
+        Analyze the content of this image. It's from a ${selectedGrade} classroom.
+        Extract the text, identify key concepts, and suggest 3-5 teaching ideas.
+        Format the response as a JSON object with the following structure:
+        {
+          "text": "...",
+          "concepts": ["...", "..."],
+          "suggestions": ["...", "..."]
+        }
+      `;
+      const result = await geminiService.analyzeImage(selectedImage, prompt);
+      const jsonMatch = result.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsedContent = JSON.parse(jsonMatch[0]);
+        setExtractedContent({
+          ...parsedContent,
+          difficulty: selectedGrade,
+        });
+      } else {
+        // Handle cases where the response is not valid JSON
+        setExtractedContent({
+          text: result,
+          concepts: [],
+          suggestions: [],
+          difficulty: selectedGrade,
+        });
+      }
+    } catch (error) {
+      console.error('Error analyzing image:', error);
+      // You might want to show an error message to the user
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleVisualizeContent = async () => {
     if (!extractedContent) return;
-    
+
     setIsVisualizing(true);
-    
-    // Simulate visualization generation
-    await new Promise(resolve => setTimeout(resolve, 4000));
-    
-    const mockVisualization: VisualizedContent = {
-      title: 'Interactive Balance Scale Visualization',
-      description: 'Visual representation of solving linear equations using balance scales',
-      visualType: 'Interactive Animation',
-      content: 'A dynamic balance scale showing how operations on one side must be mirrored on the other side to maintain equality. Students can manipulate the scales to understand the concept of maintaining balance in equations.'
-    };
-    
-    setVisualizedContent(mockVisualization);
-    setIsVisualizing(false);
+    try {
+      const result = await geminiService.generateVisualization(extractedContent.text, selectedGrade);
+      const jsonMatch = result.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        setVisualizedContent(JSON.parse(jsonMatch[0]));
+      } else {
+        // Handle cases where the response is not valid JSON
+        setVisualizedContent({
+          title: 'Visualization Idea',
+          description: 'A creative way to represent the content.',
+          visualType: 'Generated Idea',
+          content: result,
+        });
+      }
+    } catch (error) {
+      console.error('Error visualizing content:', error);
+      // You might want to show an error message to the user
+    } finally {
+      setIsVisualizing(false);
+    }
   };
 
   const toggleRecording = () => {
