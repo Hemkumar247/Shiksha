@@ -42,6 +42,7 @@ export interface Resource {
 }
 
 export class GeminiService {
+  private visionModel = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
   private model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
   async generateLearningPathway(studentProfile: StudentProfile): Promise<LearningPathway> {
@@ -115,6 +116,23 @@ export class GeminiService {
     } catch (error) {
       console.error('Error generating visualization:', error);
       return 'Unable to generate visualization at this time. Please try again later.';
+    }
+  }
+
+  async analyzeImage(imageData: string, prompt: string): Promise<string> {
+    try {
+      const imagePart = {
+        inlineData: {
+          data: imageData.split(',')[1],
+          mimeType: 'image/jpeg'
+        }
+      };
+      const result = await this.visionModel.generateContent([prompt, imagePart]);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error analyzing image:', error);
+      return 'Unable to analyze image at this time. Please try again later.';
     }
   }
 
