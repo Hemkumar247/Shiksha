@@ -21,7 +21,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage = 'dashboa
     { id: 'feedback', icon: MessageSquare, label: 'Feedback' },
     { id: 'analytics', icon: BarChart3, label: t('analytics') },
     { id: 'calendar', icon: Calendar, label: t('calendar') },
-    { id: 'chalkvision', icon: Camera, label: t('chalkVision') },
     { id: 'pathfinder', icon: Route, label: t('pathfinder') },
     { id: 'documents', icon: FileText, label: 'My Documents' },
     { id: 'profile', icon: User, label: t('profile') },

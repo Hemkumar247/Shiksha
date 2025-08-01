@@ -9,7 +9,6 @@ import { LessonPlanner } from './components/LessonPlanner';
 import { StudentsPage } from './components/StudentsPage';
 import { AnalyticsPage } from './components/AnalyticsPage';
 import { CalendarPage } from './components/CalendarPage';
-import { ChalkVisionPage } from './components/ChalkVisionPage';
 import { PathFinderPage } from './components/PathFinderPage';
 import { FeedbackPage } from './components/FeedbackPage';
 import { MyDocumentsPage } from './components/MyDocuments/MyDocumentsPage';
@@ -33,8 +32,6 @@ function App() {
         return <AnalyticsPage />;
       case 'calendar':
         return <CalendarPage />;
-      case 'chalkvision':
-        return <ChalkVisionPage />;
       case 'pathfinder':
         return <PathFinderPage />;
       case 'documents':
